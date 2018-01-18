@@ -323,9 +323,15 @@ bool CordioSecurityManager::sm_handler(const wsfMsgHdr_t* msg) {
     }
 
     switch (msg->event) {
-        case DM_SEC_PAIR_CMPL_IND:
-            // TODO
+        case DM_SEC_PAIR_CMPL_IND: {
+            dmSecPairCmplIndEvt_t* evt = (dmSecPairCmplIndEvt_t*) msg;
+                // FIXME: What to do with the authentication flags ?
+            handler->on_security_setup_completed(
+                evt->hdr.param,
+                /* SEC_STATUS_SUCCESS */ 0x00
+            );
             return true;
+        }
 
         case DM_SEC_PAIR_FAIL_IND: {
             uint8_t status = msg->status;
@@ -336,7 +342,11 @@ bool CordioSecurityManager::sm_handler(const wsfMsgHdr_t* msg) {
                     (pairing_failure_t::type) msg->status
                 );
             } else if (status == SMP_ERR_MEMORY) {
-                // FIXME: report to user
+                // report an unspecified reason to the user:
+                handler->on_pairing_error(
+                    msg->param,
+                    pairing_failure_t::UNSPECIFIED_REASON
+                );
             } else if (msg->status == SMP_ERR_TIMEOUT) {
                 // FIXME: forward to timeout handler
             } else {
@@ -345,9 +355,17 @@ bool CordioSecurityManager::sm_handler(const wsfMsgHdr_t* msg) {
             return true;
         }
 
-        case DM_SEC_ENCRYPT_IND:
+        case DM_SEC_ENCRYPT_IND: {
+            dmSecEncryptIndEvt_t *evt = (dmSecEncryptIndEvt_t*) msg;
+
             // TODO: Indicate link encryption
+            // TODO: security mode
+            handler->on_link_secured(
+                evt->hdr.param,
+                0X00
+            );
             return true;
+        }
 
         case DM_SEC_ENCRYPT_FAIL_IND:
             // TODO: indicate link encryption failure

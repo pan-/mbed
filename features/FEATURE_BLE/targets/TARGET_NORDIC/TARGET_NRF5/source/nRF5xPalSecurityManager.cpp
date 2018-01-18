@@ -412,6 +412,7 @@ bool nRF5xSecurityManager::sm_handler(const ble_evt_t *evt)
 
     switch (evt->header.evt_id) {
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST: {
+            // FIXME: distinguish pairing request from pairing response ...
             const ble_gap_sec_params_t& params =
                 gap_evt.params.sec_params_request.peer_params;
 
@@ -511,8 +512,12 @@ bool nRF5xSecurityManager::sm_handler(const ble_evt_t *evt)
 
             switch (status.auth_status) {
                 case BLE_GAP_SEC_STATUS_SUCCESS:
-                    // FIXME: needs success handler
+                    handler->on_security_setup_completed(
+                        connection,
+                        0x00
+                    );
                     break;
+
                 case BLE_GAP_SEC_STATUS_TIMEOUT:
                     // FIXME: needs timeout handler
                     break;
@@ -545,9 +550,12 @@ bool nRF5xSecurityManager::sm_handler(const ble_evt_t *evt)
             return true;
         }
 
-        case BLE_GAP_EVT_CONN_SEC_UPDATE:
-            // FIXME: Invoke handler indicating the link encryption
+        case BLE_GAP_EVT_CONN_SEC_UPDATE: {
+            ble_gap_conn_sec_t& sec = gap_evt.params.conn_sec_update.conn_sec;
+            // FIXME: Find security mode
+            handler->on_link_secured(connection, 0x00);
             return true;
+        }
 
         case BLE_GAP_EVT_TIMEOUT:
             // FIXME: forward event when available
