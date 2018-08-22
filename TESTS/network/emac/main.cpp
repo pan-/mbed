@@ -43,10 +43,6 @@
 #endif
 #endif
 
-#ifndef DEVICE_EMAC
-#error [NOT_SUPPORTED] Device EMAC has to be enabled for the target
-#endif
-
 #include "greentea-client/test_env.h"
 #include "unity.h"
 #include "utest.h"
@@ -57,7 +53,8 @@
 using namespace utest::v1;
 
 // Test setup
-utest::v1::status_t test_setup(const size_t number_of_cases) {
+utest::v1::status_t test_setup(const size_t number_of_cases)
+{
 #if !MBED_CONF_APP_ECHO_SERVER
     GREENTEA_SETUP(600, "default_auto");
 #endif

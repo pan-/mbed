@@ -20,16 +20,20 @@
 #include "rtos.h"
 
 #if defined(MBED_RTOS_SINGLE_THREAD)
-  #error [NOT_SUPPORTED] test not supported
+#error [NOT_SUPPORTED] test not supported
 #endif
 
 #if !DEVICE_USTICKER
-  #error [NOT_SUPPORTED] test not supported
+#error [NOT_SUPPORTED] test not supported
 #endif
 
 using namespace utest::v1;
 
+#if defined(__CORTEX_M23) || defined(__CORTEX_M33)
+#define TEST_STACK_SIZE 768
+#else
 #define TEST_STACK_SIZE 512
+#endif
 
 #define TEST_LONG_DELAY 20
 #define TEST_DELAY 10
@@ -200,7 +204,7 @@ void test_dual_thread_lock_lock_thread(Mutex *mutex)
 
     osStatus stat = mutex->lock(TEST_DELAY);
     TEST_ASSERT_EQUAL(osErrorTimeout, stat);
-    TEST_ASSERT_UINT32_WITHIN(5000, TEST_DELAY*1000, timer.read_us());
+    TEST_ASSERT_UINT32_WITHIN(5000, TEST_DELAY * 1000, timer.read_us());
 }
 
 /** Test dual thread lock

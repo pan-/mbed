@@ -28,18 +28,25 @@ using namespace utest::v1;
 void TCPSOCKET_SEND_TIMEOUT()
 {
     TCPSocket sock;
-    tcpsocket_connect_to_discard_srv(sock);
+    if (tcpsocket_connect_to_discard_srv(sock) != NSAPI_ERROR_OK) {
+        TEST_FAIL();
+        return;
+    }
 
     int err;
     Timer timer;
-    static const char tx_buffer[] = {'h','e','l','l','o'};
+    static const char tx_buffer[] = {'h', 'e', 'l', 'l', 'o'};
     for (int i = 0; i < 10; i++) {
         timer.reset();
         timer.start();
         err = sock.send(tx_buffer, sizeof(tx_buffer));
         timer.stop();
-        TEST_ASSERT_EQUAL(sizeof(tx_buffer), err);
-        TEST_ASSERT(timer.read_ms() <= 800);
+        if ((err == sizeof(tx_buffer)) &&
+                (timer.read_ms() <= 800)) {
+            continue;
+        }
+        TEST_FAIL();
+        break;
     }
 
     TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, sock.close());

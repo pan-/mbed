@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "mbed.h"
+#include "filesystem/mbed_filesystem.h"
 #include "LittleFileSystem.h"
 #include "errno.h"
-extern "C" {
 #include "lfs.h"
 #include "lfs_util.h"
-}
 
 
 ////// Conversion functions //////

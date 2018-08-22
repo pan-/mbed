@@ -24,12 +24,16 @@
 #endif
 
 #if !DEVICE_USTICKER
-  #error [NOT_SUPPORTED] test not supported
+#error [NOT_SUPPORTED] test not supported
 #endif
 
 using utest::v1::Case;
 
+#if defined(__CORTEX_M23) || defined(__CORTEX_M33)
+#define TEST_STACK_SIZE 512
+#else
 #define TEST_STACK_SIZE 256
+#endif
 #define ONE_MILLI_SEC 1000
 
 volatile uint32_t elapsed_time_ms = 0;
@@ -96,7 +100,7 @@ void test(void)
     //get the results from host
     greentea_parse_kv(_key, _value, sizeof(_key), sizeof(_value));
 
-    TEST_ASSERT_EQUAL_STRING_MESSAGE("pass", _key,"Host side script reported a fail...");
+    TEST_ASSERT_EQUAL_STRING_MESSAGE("pass", _key, "Host side script reported a fail...");
 }
 
 Case cases[] = {

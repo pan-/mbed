@@ -25,21 +25,22 @@
 
 using namespace utest::v1;
 
-namespace
-{
-    static const int SIGNAL_SIGIO1 = 0x1;
-    static const int SIGNAL_SIGIO2 = 0x2;
-    static const int SIGIO_TIMEOUT = 5000; //[ms]
+namespace {
+static const int SIGNAL_SIGIO1 = 0x1;
+static const int SIGNAL_SIGIO2 = 0x2;
+static const int SIGIO_TIMEOUT = 5000; //[ms]
 
-    Thread thread;
-    volatile bool running = true;
+Thread thread;
+volatile bool running = true;
 }
 
-static void _sigio_handler1(osThreadId id) {
+static void _sigio_handler1(osThreadId id)
+{
     osSignalSet(id, SIGNAL_SIGIO1);
 }
 
-static void _sigio_handler2(osThreadId id) {
+static void _sigio_handler2(osThreadId id)
+{
     osSignalSet(id, SIGNAL_SIGIO2);
 }
 
@@ -61,27 +62,30 @@ static void check_const_len_rand_sequence()
         fill_tx_buffer_ascii(tx_buff, BUFF_SIZE);
         bytes2process = BUFF_SIZE;
         while (bytes2process > 0) {
-            sent = sock.send(&(tx_buff[BUFF_SIZE-bytes2process]), bytes2process);
+            sent = sock.send(&(tx_buff[BUFF_SIZE - bytes2process]), bytes2process);
             if (sent == NSAPI_ERROR_WOULD_BLOCK) {
-                if(osSignalWait(SIGNAL_SIGIO1, SIGIO_TIMEOUT).status == osEventTimeout) {
+                if (osSignalWait(SIGNAL_SIGIO1, SIGIO_TIMEOUT).status == osEventTimeout) {
                     TEST_FAIL();
+                    goto END;
                 }
                 continue;
             } else if (sent < 0) {
                 printf("network error %d\n", sent);
                 TEST_FAIL();
+                goto END;
             }
             bytes2process -= sent;
         }
 
         bytes2process = BUFF_SIZE;
         while (bytes2process > 0) {
-            recvd = sock.recv(&(rx_buff[BUFF_SIZE-bytes2process]), bytes2process);
+            recvd = sock.recv(&(rx_buff[BUFF_SIZE - bytes2process]), bytes2process);
             if (recvd == NSAPI_ERROR_WOULD_BLOCK) {
                 continue;
             } else if (recvd < 0) {
                 printf("network error %d\n", recvd);
                 TEST_FAIL();
+                goto END;
             }
             bytes2process -= recvd;
         }
@@ -89,9 +93,11 @@ static void check_const_len_rand_sequence()
         if (bytes2process != 0) {
             drop_bad_packets(sock, 0);
             TEST_FAIL();
+            goto END;
         }
         TEST_ASSERT_EQUAL(0, memcmp(tx_buff, rx_buff, BUFF_SIZE));
     }
+END:
     TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, sock.close());
 }
 
@@ -113,27 +119,30 @@ static void check_var_len_rand_sequence()
         fill_tx_buffer_ascii(tx_buff, i);
         bytes2process = i;
         while (bytes2process > 0) {
-            sent = sock.send(&(tx_buff[i-bytes2process]), bytes2process);
+            sent = sock.send(&(tx_buff[i - bytes2process]), bytes2process);
             if (sent == NSAPI_ERROR_WOULD_BLOCK) {
-                if(osSignalWait(SIGNAL_SIGIO2, SIGIO_TIMEOUT).status == osEventTimeout) {
+                if (osSignalWait(SIGNAL_SIGIO2, SIGIO_TIMEOUT).status == osEventTimeout) {
                     TEST_FAIL();
+                    goto END;
                 }
                 continue;
             } else if (sent < 0) {
                 printf("[%02d] network error %d\n", i, sent);
                 TEST_FAIL();
+                goto END;
             }
-           bytes2process -= sent;
+            bytes2process -= sent;
         }
 
         bytes2process = i;
         while (bytes2process > 0) {
-            recvd = sock.recv(&(rx_buff[i-bytes2process]), bytes2process);
+            recvd = sock.recv(&(rx_buff[i - bytes2process]), bytes2process);
             if (recvd == NSAPI_ERROR_WOULD_BLOCK) {
                 continue;
             } else if (recvd < 0) {
                 printf("[%02d] network error %d\n", i, recvd);
                 TEST_FAIL();
+                goto END;
             }
             bytes2process -= recvd;
         }
@@ -141,10 +150,11 @@ static void check_var_len_rand_sequence()
         if (bytes2process != 0) {
             drop_bad_packets(sock, 0);
             TEST_FAIL();
+            goto END;
         }
         TEST_ASSERT_EQUAL(0, memcmp(tx_buff, rx_buff, i));
     }
-
+END:
     TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, sock.close());
 }
 

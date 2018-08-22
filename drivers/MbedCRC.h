@@ -95,7 +95,14 @@ namespace mbed {
 template <uint32_t polynomial = POLY_32BIT_ANSI, uint8_t width = 32>
 class MbedCRC {
 public:
-    enum CrcMode { HARDWARE = 0, TABLE, BITWISE };
+    enum CrcMode
+    {
+#ifdef DEVICE_CRC
+        HARDWARE = 0,
+#endif
+        TABLE = 1,
+        BITWISE
+    };
 
 public:
     typedef uint64_t crc_data_size_t;
@@ -117,7 +124,7 @@ public:
      */
     MbedCRC(uint32_t initial_xor, uint32_t final_xor, bool reflect_data, bool reflect_remainder) :
         _initial_value(initial_xor), _final_xor(final_xor), _reflect_data(reflect_data),
-        _reflect_remainder(reflect_remainder), _crc_table(NULL)
+        _reflect_remainder(reflect_remainder)
     {
         mbed_crc_ctor();
     }
@@ -170,12 +177,12 @@ public:
     int32_t compute_partial(void *buffer, crc_data_size_t size, uint32_t *crc)
     {
         switch (_mode) {
-            case HARDWARE:
 #ifdef DEVICE_CRC
+            case HARDWARE:
                 hal_crc_compute_partial((uint8_t *)buffer, size);
-#endif // DEVICE_CRC
                 *crc = 0;
                 return 0;
+#endif
             case TABLE:
                 return table_compute_partial(buffer, size, crc);
             case BITWISE:
@@ -229,20 +236,22 @@ public:
     {
         MBED_ASSERT(crc != NULL);
 
-        if (_mode == HARDWARE) {
 #ifdef DEVICE_CRC
+        if (_mode == HARDWARE) {
             *crc = hal_crc_get_result();
             return 0;
-#else
-            return -1;
-#endif
         }
-
+#endif
         uint32_t p_crc = *crc;
         if ((width < 8) && (NULL == _crc_table)) {
             p_crc = (uint32_t)(p_crc << (8 - width));
         }
-        *crc = (reflect_remainder(p_crc) ^ _final_xor) & get_crc_mask();
+        // Optimized algorithm for 32BitANSI does not need additional reflect_remainder
+        if ((TABLE == _mode) && (POLY_32BIT_ANSI == polynomial)) {
+            *crc = (p_crc ^ _final_xor) & get_crc_mask();
+        } else {
+            *crc = (reflect_remainder(p_crc) ^ _final_xor) & get_crc_mask();
+        }
         return 0;
     }
 
@@ -420,9 +429,9 @@ private:
             }
         } else {
             uint32_t *crc_table = (uint32_t *)_crc_table;
-            for (crc_data_size_t byte = 0; byte < size; byte++) {
-                data_byte = reflect_bytes(data[byte]) ^ (p_crc >> (width - 8));
-                p_crc = crc_table[data_byte] ^ (p_crc << 8);
+            for (crc_data_size_t i = 0; i < size; i++) {
+                p_crc = (p_crc >> 4) ^ crc_table[(p_crc ^ (data[i] >> 0)) & 0xf];
+                p_crc = (p_crc >> 4) ^ crc_table[(p_crc ^ (data[i] >> 4)) & 0xf];
             }
         }
         *crc = p_crc & get_crc_mask();
@@ -436,8 +445,6 @@ private:
     {
         MBED_STATIC_ASSERT(width <= 32, "Max 32-bit CRC supported");
 
-        _mode = (_crc_table != NULL) ? TABLE : BITWISE;
-
 #ifdef DEVICE_CRC
         crc_mbed_config_t config;
         config.polynomial  = polynomial;
@@ -449,8 +456,30 @@ private:
 
         if (hal_crc_is_supported(&config)) {
             _mode = HARDWARE;
+            return;
         }
 #endif
+        switch (polynomial) {
+            case POLY_32BIT_ANSI:
+                _crc_table = (uint32_t *)Table_CRC_32bit_ANSI;
+                break;
+            case POLY_8BIT_CCITT:
+                _crc_table = (uint32_t *)Table_CRC_8bit_CCITT;
+                break;
+            case POLY_7BIT_SD:
+                _crc_table = (uint32_t *)Table_CRC_7Bit_SD;
+                break;
+            case POLY_16BIT_CCITT:
+                _crc_table = (uint32_t *)Table_CRC_16bit_CCITT;
+                break;
+            case POLY_16BIT_IBM:
+                _crc_table = (uint32_t *)Table_CRC_16bit_IBM;
+                break;
+            default:
+                _crc_table = NULL;
+                break;
+        }
+        _mode = (_crc_table != NULL) ? TABLE : BITWISE;
     }
 };
 

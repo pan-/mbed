@@ -65,12 +65,6 @@ using namespace mbed;
  */
 #define DOWN_LINK                                   1
 
-/**
- * A mask for the network ID.
- */
-#define LORAWAN_NETWORK_ID_MASK                     ( uint32_t )0xFE000000
-
-
 LoRaMac::LoRaMac()
     : _lora_time(),
       _lora_phy(NULL),
@@ -170,6 +164,8 @@ void LoRaMac::post_process_mcps_req()
             if (_params.is_ul_frame_counter_fixed == false) {
                 _params.ul_frame_counter++;
             }
+        } else {
+            _mcps_confirmation.status = LORAMAC_EVENT_INFO_STATUS_ERROR;
         }
     } else {
         //UNCONFIRMED or PROPRIETARY
@@ -671,7 +667,7 @@ void LoRaMac::on_radio_rx_done(const uint8_t *const payload, uint16_t size,
 {
     if (_device_class == CLASS_C && !_continuous_rx2_window_open) {
         open_rx2_window();
-    } else {
+    } else if (_device_class != CLASS_C){
         _lora_time.stop(_params.timers.rx_window1_timer);
         _lora_phy->put_radio_to_sleep();
     }
@@ -772,7 +768,7 @@ bool LoRaMac::continue_joining_process()
     }
 
     // Schedule a retry
-    if (handle_retransmission() != LORAWAN_STATUS_OK) {
+    if (handle_retransmission() != LORAWAN_STATUS_CONNECT_IN_PROGRESS) {
         return false;
     }
 
@@ -784,6 +780,7 @@ bool LoRaMac::continue_sending_process()
     if (_params.ack_timeout_retry_counter > _params.max_ack_timeout_retries) {
         _mac_commands.clear_command_buffer();
         _params.adr_ack_counter++;
+        _lora_time.stop(_params.timers.ack_timeout_timer);
         return false;
     }
 
@@ -845,9 +842,12 @@ lorawan_status_t LoRaMac::handle_retransmission()
 void LoRaMac::on_backoff_timer_expiry(void)
 {
     Lock lock(*this);
-    lorawan_status_t status = schedule_tx();
-    MBED_ASSERT(status == LORAWAN_STATUS_OK);
-    (void) status;
+
+    _lora_time.stop(_params.timers.backoff_timer);
+
+    if ((schedule_tx() != LORAWAN_STATUS_OK) && nwk_joined()) {
+        _scheduling_failure_handler.call();
+    }
 }
 
 void LoRaMac::open_rx1_window(void)
@@ -932,8 +932,12 @@ void LoRaMac::on_ack_timeout_timer_event(void)
 
     _mcps_confirmation.nb_retries = _params.ack_timeout_retry_counter;
 
+
     // Schedule a retry
-    if (handle_retransmission() != LORAWAN_STATUS_OK) {
+    lorawan_status_t status = handle_retransmission();
+
+    if (status == LORAWAN_STATUS_NO_CHANNEL_FOUND ||
+            status == LORAWAN_STATUS_NO_FREE_CHANNEL_FOUND) {
         // In a case when enabled channels are not found, PHY layer
         // resorts to default channels. Next attempt should go forward as the
         // default channels are always available if there is a base station in the
@@ -944,10 +948,24 @@ void LoRaMac::on_ack_timeout_timer_event(void)
         _mcps_confirmation.ack_received = false;
         _mcps_confirmation.nb_retries = _params.ack_timeout_retry_counter;
 
-        // now that is a critical failure
-        lorawan_status_t status = handle_retransmission();
+        // For the next attempt we need to make sure that we do not incur length error
+        // which would mean that the datarate changed during retransmissions and
+        // the original packet doesn't fit into allowed payload buffer anymore.
+        status = handle_retransmission();
+
+        if (status == LORAWAN_STATUS_LENGTH_ERROR) {
+            _scheduling_failure_handler.call();
+            return;
+        }
+
+        // if we did not incur a length error and still the status is not OK,
+        // it is a critical failure
+        status = handle_retransmission();
         MBED_ASSERT(status == LORAWAN_STATUS_OK);
         (void) status;
+    } else if (status != LORAWAN_STATUS_OK) {
+        _scheduling_failure_handler.call();
+        return;
     }
 
     _params.ack_timeout_retry_counter++;
@@ -1018,7 +1036,13 @@ int LoRaMac::get_backoff_timer_event_id(void)
 lorawan_status_t LoRaMac::clear_tx_pipe(void)
 {
     // check if the event is not already queued
-    if (_ev_queue->time_left(get_backoff_timer_event_id()) > 0) {
+    const int id = get_backoff_timer_event_id();
+    if (id == 0) {
+        // No queued send request
+        return LORAWAN_STATUS_OK;
+    }
+
+    if (_ev_queue->time_left(id) > 0) {
         _lora_time.stop(_params.timers.backoff_timer);
         _lora_time.stop(_params.timers.ack_timeout_timer);
         memset(_params.tx_buffer, 0, sizeof _params.tx_buffer);
@@ -1026,9 +1050,10 @@ lorawan_status_t LoRaMac::clear_tx_pipe(void)
         reset_ongoing_tx(true);
         tr_debug("Sending Cancelled");
         return LORAWAN_STATUS_OK;
+    } else {
+        // Event is already being dispatched so it cannot be cancelled
+        return LORAWAN_STATUS_BUSY;
     }
-
-    return LORAWAN_STATUS_BUSY;
 }
 
 lorawan_status_t LoRaMac::schedule_tx()
@@ -1062,6 +1087,7 @@ lorawan_status_t LoRaMac::schedule_tx()
     switch (status) {
         case LORAWAN_STATUS_NO_CHANNEL_FOUND:
         case LORAWAN_STATUS_NO_FREE_CHANNEL_FOUND:
+            _mcps_confirmation.status = LORAMAC_EVENT_INFO_STATUS_ERROR;
             return status;
         case LORAWAN_STATUS_DUTYCYCLE_RESTRICTED:
             if (backoff_time != 0) {
@@ -1078,13 +1104,13 @@ lorawan_status_t LoRaMac::schedule_tx()
     uint8_t dr_offset = _lora_phy->apply_DR_offset(_params.sys_params.channel_data_rate,
                                                   _params.sys_params.rx1_dr_offset);
 
-    _lora_phy->compute_rx_win_params(dr_offset, _params.sys_params.min_rx_symb,
-                                    _params.sys_params.max_sys_rx_error,
+    _lora_phy->compute_rx_win_params(dr_offset, MBED_CONF_LORA_DOWNLINK_PREAMBLE_LENGTH,
+                                    MBED_CONF_LORA_MAX_SYS_RX_ERROR,
                                     &_params.rx_window1_config);
 
     _lora_phy->compute_rx_win_params(_params.sys_params.rx2_channel.datarate,
-                                    _params.sys_params.min_rx_symb,
-                                    _params.sys_params.max_sys_rx_error,
+                                    MBED_CONF_LORA_DOWNLINK_PREAMBLE_LENGTH,
+                                    MBED_CONF_LORA_MAX_SYS_RX_ERROR,
                                     &_params.rx_window2_config);
 
     if (!_is_nwk_joined) {
@@ -1353,8 +1379,8 @@ void LoRaMac::set_device_class(const device_class_t &device_class,
         _params.is_node_ack_requested = false;
         _lora_phy->put_radio_to_sleep();
         _lora_phy->compute_rx_win_params(_params.sys_params.rx2_channel.datarate,
-                                        _params.sys_params.min_rx_symb,
-                                        _params.sys_params.max_sys_rx_error,
+                                        MBED_CONF_LORA_DOWNLINK_PREAMBLE_LENGTH,
+                                        MBED_CONF_LORA_MAX_SYS_RX_ERROR,
                                         &_params.rx_window2_config);
     }
 
@@ -1394,6 +1420,11 @@ lorawan_status_t LoRaMac::prepare_join(const lorawan_connect_t *params, bool is_
             }
             // Reset variable JoinRequestTrials
             _params.join_request_trial_counter = 0;
+
+            reset_mac_parameters();
+
+            _params.sys_params.channel_data_rate =
+                _lora_phy->get_alternate_DR(_params.join_request_trial_counter + 1);
         } else {
             if ((params->connection_u.abp.dev_addr == 0)
                     || (params->connection_u.abp.nwk_id == 0)
@@ -1434,7 +1465,7 @@ lorawan_status_t LoRaMac::prepare_join(const lorawan_connect_t *params, bool is_
         const static uint8_t nwk_skey[] = MBED_CONF_LORA_NWKSKEY;
         const static uint8_t app_skey[] = MBED_CONF_LORA_APPSKEY;
 
-        _params.net_id = (MBED_CONF_LORA_DEVICE_ADDRESS & LORAWAN_NETWORK_ID_MASK);
+        _params.net_id = (MBED_CONF_LORA_DEVICE_ADDRESS & LORAWAN_NETWORK_ID_MASK) >> 25;
         _params.dev_addr = MBED_CONF_LORA_DEVICE_ADDRESS;
 
         memcpy(_params.keys.nwk_skey, nwk_skey, sizeof(_params.keys.nwk_skey));
@@ -1711,12 +1742,14 @@ void LoRaMac::set_tx_continuous_wave(uint8_t channel, int8_t datarate, int8_t tx
     _lora_phy->set_tx_cont_mode(&continuous_wave);
 }
 
-lorawan_status_t LoRaMac::initialize(EventQueue *queue)
+lorawan_status_t LoRaMac::initialize(EventQueue *queue,
+                                     mbed::Callback<void(void)>scheduling_failure_handler)
 {
     _lora_time.activate_timer_subsystem(queue);
     _lora_phy->initialize(&_lora_time);
 
     _ev_queue = queue;
+    _scheduling_failure_handler = scheduling_failure_handler;
 
     _channel_plan.activate_channelplan_subsystem(_lora_phy);
 
@@ -1730,9 +1763,6 @@ lorawan_status_t LoRaMac::initialize(EventQueue *queue)
     _params.timers.aggregated_timeoff = 0;
 
     _lora_phy->reset_to_default_values(&_params, true);
-
-    _params.sys_params.max_sys_rx_error = 10;
-    _params.sys_params.min_rx_symb = 6;
     _params.sys_params.retry_num = 1;
 
     reset_mac_parameters();
@@ -1755,9 +1785,7 @@ lorawan_status_t LoRaMac::initialize(EventQueue *queue)
     _params.timers.mac_init_time = _lora_time.get_current_time();
 
     _params.sys_params.adr_on = MBED_CONF_LORA_ADR_ON;
-
-    _params.is_nwk_public = MBED_CONF_LORA_PUBLIC_NETWORK;
-    _lora_phy->setup_public_network_mode(MBED_CONF_LORA_PUBLIC_NETWORK);
+    _params.sys_params.channel_data_rate = _lora_phy->get_default_max_tx_datarate();
 
     return LORAWAN_STATUS_OK;
 }
