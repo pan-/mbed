@@ -304,6 +304,10 @@ struct Span {
     Span(const Span<OtherElementType, Extent> &other):
         _data(other.data())
     {
+        // NOTE: If another constructor with a single parameter or a constructor
+        // with more than one parameter and default argument value is added, may
+        // require to exclude this overload if types are not convertible.
+        // In such event; use SFINAE (enable_if) on the signature.
         MBED_STATIC_ASSERT(
             (span_detail::is_convertible<OtherElementType (*)[], ElementType (*)[]>::value),
             "OtherElementType(*)[] should be convertible to ElementType (*)[]"
@@ -593,6 +597,10 @@ struct Span<ElementType, SPAN_DYNAMIC_EXTENT> {
     Span(const Span<OtherElementType, OtherExtent> &other):
         _data(other.data()), _size(other.size())
     {
+        // NOTE: If another constructor with a single parameter or a constructor
+        // with more than one parameter and default argument value is added, may
+        // require to exclude this overload if types are not convertible.
+        // In such event; use SFINAE (enable_if) on the signature.
         MBED_STATIC_ASSERT(
             (span_detail::is_convertible<OtherElementType (*)[], ElementType (*)[]>::value),
             "OtherElementType(*)[] should be convertible to ElementType (*)[]"
