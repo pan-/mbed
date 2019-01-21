@@ -23,7 +23,7 @@ ArmGap &ArmGap::getInstance() {
     return m_instance;
 }
 
-ble_error_t ArmGap::setAdvertisingData(const GapAdvertisingData &advData, const GapAdvertisingData &scanResponse)
+ble_error_t ArmGap::setAdvertisingData_(const GapAdvertisingData &advData, const GapAdvertisingData &scanResponse)
 {
     /* Make sure we don't exceed the advertising payload length */
     if (advData.getPayloadLen() > GAP_ADVERTISING_DATA_MAX_PAYLOAD) {
@@ -42,7 +42,7 @@ ble_error_t ArmGap::setAdvertisingData(const GapAdvertisingData &advData, const 
     return BLE_ERROR_NONE;
 }
 
-ble_error_t ArmGap::startAdvertising(const GapAdvertisingParams &params)
+ble_error_t ArmGap::startAdvertising_(const GapAdvertisingParams &params)
 {
     /* Make sure we support the advertising type */
     if (params.getAdvertisingType() == GapAdvertisingParams::ADV_CONNECTABLE_DIRECTED) {
@@ -90,7 +90,7 @@ ble_error_t ArmGap::startAdvertising(const GapAdvertisingParams &params)
     return BLE_ERROR_NONE;
 }
 
-ble_error_t ArmGap::stopAdvertising(void)
+ble_error_t ArmGap::stopAdvertising_(void)
 {
     DmAdvStop();
 
@@ -105,11 +105,11 @@ void ArmGap::advertisingStopped(void)
      * be '0.' Otherwise, advertising must have stopped due to a timeout
      */
     if (state.advertising) {
-        processTimeoutEvent(Gap::TIMEOUT_SRC_ADVERTISING);
+        processTimeoutEvent(TIMEOUT_SRC_ADVERTISING);
     }
 }
 
-ble_error_t ArmGap::disconnect(DisconnectionReason_t reason)
+ble_error_t ArmGap::disconnect_(DisconnectionReason_t reason)
 {
     DmConnClose(DM_CLIENT_ID_APP, m_connectionHandle, reason);
 
@@ -119,7 +119,7 @@ ble_error_t ArmGap::disconnect(DisconnectionReason_t reason)
     return BLE_ERROR_NONE;
 }
 
-ble_error_t ArmGap::disconnect(Handle_t connectionHandle, DisconnectionReason_t reason)
+ble_error_t ArmGap::disconnect_(Handle_t connectionHandle, DisconnectionReason_t reason)
 {
     DmConnClose(DM_CLIENT_ID_APP, connectionHandle, reason);
 
@@ -129,17 +129,17 @@ ble_error_t ArmGap::disconnect(Handle_t connectionHandle, DisconnectionReason_t 
     return BLE_ERROR_NONE;
 }
 
-ble_error_t ArmGap::getPreferredConnectionParams(ConnectionParams_t *params)
+ble_error_t ArmGap::getPreferredConnectionParams_(ConnectionParams_t *params)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-ble_error_t ArmGap::setPreferredConnectionParams(const ConnectionParams_t *params)
+ble_error_t ArmGap::setPreferredConnectionParams_(const ConnectionParams_t *params)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-ble_error_t ArmGap::updateConnectionParams(Handle_t handle, const ConnectionParams_t *newParams)
+ble_error_t ArmGap::updateConnectionParams_(Handle_t handle, const ConnectionParams_t *newParams)
 {
     if (DmConnCheckIdle(handle) != 0) {
         return BLE_STACK_BUSY;
@@ -155,7 +155,7 @@ ble_error_t ArmGap::updateConnectionParams(Handle_t handle, const ConnectionPara
     return BLE_ERROR_NONE;
 }
 
-ble_error_t ArmGap::startRadioScan(const GapScanningParams &scanningParams)
+ble_error_t ArmGap::startRadioScan_(const GapScanningParams &scanningParams)
 {
     DmScanSetInterval(scanningParams.getInterval(), scanningParams.getWindow());
 
@@ -171,7 +171,7 @@ ble_error_t ArmGap::startRadioScan(const GapScanningParams &scanningParams)
     return BLE_ERROR_NONE;
 }
 
-ble_error_t ArmGap::stopScan(void)
+ble_error_t ArmGap::stopScan_(void)
 {
     DmScanStop();
     return BLE_ERROR_NONE;
@@ -187,44 +187,44 @@ uint16_t ArmGap::getConnectionHandle(void)
     return m_connectionHandle;
 }
 
-ble_error_t ArmGap::setAddress(AddressType_t type, const Address_t address)
+ble_error_t ArmGap::setAddress_(AddressType_t type, const Address_t address)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-ble_error_t ArmGap::getAddress(AddressType_t *typeP, Address_t address)
+ble_error_t ArmGap::getAddress_(AddressType_t *typeP, Address_t address)
 {
     *typeP = m_type;
     BdaCpy(address, HciGetBdAddr());
     return BLE_ERROR_NONE;
 }
 
-ble_error_t ArmGap::setDeviceName(const uint8_t *deviceName)
+ble_error_t ArmGap::setDeviceName_(const uint8_t *deviceName)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-ble_error_t ArmGap::getDeviceName(uint8_t *deviceName, unsigned *lengthP)
+ble_error_t ArmGap::getDeviceName_(uint8_t *deviceName, unsigned *lengthP)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-ble_error_t ArmGap::setAppearance(GapAdvertisingData::Appearance appearance)
+ble_error_t ArmGap::setAppearance_(GapAdvertisingData::Appearance appearance)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-ble_error_t ArmGap::getAppearance(GapAdvertisingData::Appearance *appearanceP)
+ble_error_t ArmGap::getAppearance_(GapAdvertisingData::Appearance *appearanceP)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-ble_error_t ArmGap::setTxPower(int8_t txPower)
+ble_error_t ArmGap::setTxPower_(int8_t txPower)
 {
     return BLE_ERROR_NOT_IMPLEMENTED;
 }
 
-void ArmGap::getPermittedTxPowerValues(const int8_t **valueArrayPP, size_t *countP)
+void ArmGap::getPermittedTxPowerValues_(const int8_t **valueArrayPP, size_t *countP)
 {
     static const int8_t permittedTxValues[] = {
         -18, -15, -12, -9, -6, -3, 0, 3

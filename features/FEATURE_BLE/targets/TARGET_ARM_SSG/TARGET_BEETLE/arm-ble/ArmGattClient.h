@@ -20,9 +20,9 @@
 
 #include <stddef.h>
 
-#include "GattClient.h"
+#include "ble/GattClient.h"
 
-class ArmGattClient : public GattClient
+class ArmGattClient : public ble::interface::GattClient<ArmGattClient>
 {
 public:
     static ArmGattClient &getInstance() {

@@ -20,9 +20,9 @@
 
 #include <stddef.h>
 
-#include "SecurityManager.h"
+#include "ble/SecurityManager.h"
 
-class ArmSecurityManager : public SecurityManager
+class ArmSecurityManager : public ble::interface::SecurityManager<ArmSecurityManager>
 {
 public:
     static ArmSecurityManager &getInstance() {
