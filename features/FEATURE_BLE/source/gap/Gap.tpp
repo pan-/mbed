@@ -469,6 +469,18 @@ uint16_t Gap<Impl>::getMaxAdvertisingDataLength_()
 }
 
 template<class Impl>
+uint16_t Gap<Impl>::getMaxConnectableAdvertisingDataLength_()
+{
+    return LEGACY_ADVERTISING_MAX_SIZE;
+}
+
+template<class Impl>
+uint16_t Gap<Impl>::getMaxActiveSetAdvertisingDataLength_()
+{
+    return LEGACY_ADVERTISING_MAX_SIZE;
+}
+
+template<class Impl>
 ble_error_t Gap<Impl>::createAdvertisingSet_(
     advertising_handle_t *handle,
     const AdvertisingParameters &parameters
