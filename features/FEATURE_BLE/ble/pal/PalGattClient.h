@@ -36,7 +36,7 @@ namespace pal {
 template<class Impl>
 struct GattClientEventHandler : StaticInterface<Impl, GattClientEventHandler> {
 
-    using StaticInterface<Impl, GattClientEventHandler>::impl;
+    using StaticInterface<Impl, ble::pal::GattClientEventHandler>::impl;
 
     /**
      * Function invoked when the connections changes the ATT_MTU which controls
