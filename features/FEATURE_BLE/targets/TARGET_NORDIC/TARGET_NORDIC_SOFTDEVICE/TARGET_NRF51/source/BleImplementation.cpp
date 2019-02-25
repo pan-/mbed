@@ -84,6 +84,5 @@ template class ble::interface::GattServer<nRF5xGattServer>;
 
 // GAP
 
-template class ble::interface::LegacyGap<nRF5xGap>;
+// see nRF5xGap.cpp (work around for armcc5)
 
-template class ble::interface::Gap<nRF5xGap>;

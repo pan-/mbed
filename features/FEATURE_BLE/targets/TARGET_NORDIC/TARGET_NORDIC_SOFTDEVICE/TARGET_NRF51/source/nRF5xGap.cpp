@@ -30,6 +30,16 @@
 #include "BleImplementationForward.h"
 #include <algorithm>
 
+// ARMCC5 is not able to export static variable of explicitly instantiated class
+// template if not used immediately. The default privacy configurations are used
+// in this file so we instantiate here.
+
+#include "source/gap/Gap.tpp"
+#include "source/LegacyGap.tpp"
+
+template class ble::interface::LegacyGap<nRF5xGap>;
+template class ble::interface::Gap<nRF5xGap>;
+
 using ble::pal::vendor::nordic::nRF5xSecurityManager;
 typedef ble::impl::PalSecurityManagerImpl::resolving_list_entry_t resolving_list_entry_t;
 using ble::ArrayView;
