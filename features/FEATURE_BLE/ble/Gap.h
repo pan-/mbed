@@ -2500,6 +2500,11 @@ private:
 
 
 protected:
+    using ble::interface::Gap<nRF5xGap>::startAdvertising_;
+    using ble::interface::Gap<nRF5xGap>::stopAdvertising_;
+    using ble::interface::Gap<nRF5xGap>::connect_;
+    using ble::interface::Gap<nRF5xGap>::disconnect_;
+
     /* --- Abstract calls with default implementation --- */
     uint16_t getMinAdvertisingInterval_(void) const;
 
