@@ -15,11 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "mbed-trace/mbed_trace.h"
 #include "source/PalGapImpl.h"
 #include "hci_api.h"
 #include "dm_api.h"
 #include "dm_main.h"
 #include "dm_conn.h"
+
+#define TRACE_GROUP                 "PGAP"
 
 namespace ble {
 namespace impl {
@@ -98,6 +101,7 @@ address_t PalGap::get_random_address()
 
 ble_error_t PalGap::set_random_address(const address_t &address)
 {
+    tr_info("set new random address: %s", tr_mac(address));
     device_random_address = address;
     DmDevSetRandAddr(const_cast<uint8_t *>(address.data()));
     return BLE_ERROR_NONE;
@@ -670,6 +674,8 @@ void PalGap::gap_handler(const wsfMsgHdr_t *msg)
                 adv_cb->state = direct_adv_cb_t::free;
             }
 
+            tr_info("Advertising set %d terminated", evt->advHandle);
+
             if (!handler) {
                 break;
             }
@@ -788,6 +794,7 @@ void PalGap::gap_handler(const wsfMsgHdr_t *msg)
             // Leave the rest of the processing to the event handlers bellow.
             // There is no advertising stop event generated for directed connectable advertising.
             const auto *evt = (const hciLeConnCmplEvt_t *) msg;
+            tr_info("stack report open connection %d", evt->handle);
             direct_adv_cb_t *adv_cb = get_gap().get_running_conn_direct_adv_cb(evt->hdr.param);
             if (adv_cb) {
                 adv_cb->state = direct_adv_cb_t::free;
@@ -842,6 +849,7 @@ ble_error_t PalGap::set_advertising_set_random_address(
     const address_t &address
 )
 {
+    tr_info("Set advertising set %d random address %s", advertising_handle, tr_mac(address));
     DmAdvSetRandAddr(advertising_handle, address.data());
     return BLE_ERROR_NONE;
 }

@@ -19,6 +19,7 @@
 #ifndef BLE_TYPES_H_
 #define BLE_TYPES_H_
 
+#include "mbed_trace.h"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -494,6 +495,20 @@ struct address_t : public byte_array_t<6> {
         memcpy(_value, input_value, sizeof(_value));
     }
 };
+
+static inline char* tr_mac(const address_t& address) {
+    uint8_t rev[6] = {
+        address[5],
+        address[4],
+        address[3],
+        address[2],
+        address[1],
+        address[0],
+    };
+
+    return tr_array(rev, 6);
+}
+
 
 /**
  * Type that describes a random device address type.

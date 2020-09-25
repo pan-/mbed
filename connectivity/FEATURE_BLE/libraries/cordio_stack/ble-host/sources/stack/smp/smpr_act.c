@@ -34,6 +34,10 @@
 #include "smpr_main.h"
 #include "dm_api.h"
 
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "COSM"
+
 /*************************************************************************************************/
 /*!
  *  \brief  Send a slave security request.
@@ -46,6 +50,7 @@
 /*************************************************************************************************/
 void smprActSendSecurityReq(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   *pPkt;
   uint8_t   *p;
 
@@ -77,6 +82,7 @@ void smprActSendSecurityReq(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActProcPairReq(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   dmSecPairIndEvt_t   pairInd;
   uint8_t             *p;
 
@@ -86,6 +92,7 @@ void smprActProcPairReq(smpCcb_t *pCcb, smpMsg_t *pMsg)
     if ((pCcb->pScr = WsfBufAlloc(sizeof(smpScratch_t))) == NULL)
     {
       /* alloc failed; cancel pairing */
+      tr_info("failure in smprActProcPairReq");
       pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
       pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
       smpSmExecute(pCcb, pMsg);
@@ -191,6 +198,7 @@ void smprActSendPairRsp(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActProcPairCnf(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   *p;
 
   /* go to start of packet */
@@ -215,6 +223,7 @@ void smprActProcPairCnf(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActProcPairCnfCalc1(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   smprActProcPairCnf(pCcb, pMsg);
 
   /* get random number to scratchpad */
@@ -236,6 +245,7 @@ void smprActProcPairCnfCalc1(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActCnfVerify(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* compare calculated confirm value with value received earlier */
   if (memcmp(pMsg->aes.pCiphertext, pCcb->pScr->buf.b3, SMP_CONFIRM_LEN) != 0)
   {
@@ -275,6 +285,7 @@ void smprActCnfVerify(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActSendPairRandom(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   *pPkt;
   uint8_t   *p;
   uint8_t   encKeyLen;
@@ -316,6 +327,7 @@ void smprActSendPairRandom(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActSetupKeyDist(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* don't receive anything yet */
   pCcb->nextCmdCode = 0;
 
@@ -346,6 +358,7 @@ void smprActSetupKeyDist(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActSendKey(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t     keyDist;
 
   /* get responder key distribution */
@@ -404,6 +417,7 @@ void smprActSendKey(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smprActRcvKey(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   keyDist;
 
   /* get initiator key distribution */

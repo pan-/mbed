@@ -22,6 +22,10 @@
  */
 /*************************************************************************************************/
 
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "CSMP"
+
 #include <string.h>
 #include "wsf_types.h"
 #include "wsf_buf.h"
@@ -48,6 +52,7 @@
 /*************************************************************************************************/
 void smpStartRspTimer(smpCcb_t *pCcb)
 {
+    tr_info("%s", __FUNCTION__);
   /* start smp response timer */
   pCcb->rspTimer.msg.event = SMP_MSG_INT_RSP_TIMEOUT;
   pCcb->rspTimer.msg.status = SMP_ERR_TIMEOUT;
@@ -66,6 +71,7 @@ void smpStartRspTimer(smpCcb_t *pCcb)
 /*************************************************************************************************/
 void smpActNone(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   return;
 }
 
@@ -80,6 +86,7 @@ void smpActNone(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpCleanup(smpCcb_t *pCcb)
 {
+    tr_info("%s", __FUNCTION__);
   /* free scratch buffer */
   if (pCcb->pScr != NULL)
   {
@@ -110,6 +117,7 @@ void smpCleanup(smpCcb_t *pCcb)
 /*************************************************************************************************/
 void smpActCleanup(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   smpCleanup(pCcb);
 }
 
@@ -125,6 +133,7 @@ void smpActCleanup(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpSendPairingFailed(smpCcb_t *pCcb, uint8_t reason)
 {
+    tr_info("smpSendPairingFailed");
   uint8_t *pPacket;
   uint8_t *p;
 
@@ -150,6 +159,7 @@ void smpSendPairingFailed(smpCcb_t *pCcb, uint8_t reason)
 /*************************************************************************************************/
 void smpActPairingFailed(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("smpActPairingFailed");
   /* clean up */
   smpCleanup(pCcb);
 
@@ -173,10 +183,12 @@ void smpActPairingFailed(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActSecReqTimeout(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* The initiator can ignore security request. Cancel pairing if paring/encryption was not
    * completed, else assume the initiator ignored a request to change keys. */
   if (DmConnSecLevel(pCcb->connId) == DM_SEC_LEVEL_NONE)
   {
+      tr_info("smpActSecReqTimeout");
     smpActPairingFailed(pCcb, pMsg);
   }
   else
@@ -199,6 +211,7 @@ void smpActSecReqTimeout(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActPairingCancel(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* send pairing failed packet */
   smpSendPairingFailed(pCcb, pMsg->hdr.status);
 
@@ -217,6 +230,7 @@ void smpActPairingCancel(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActStorePin(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* copy authentication data to scratchpad */
   memcpy(pCcb->pScr->buf.b1, pMsg->dm.authRsp.authData, pMsg->dm.authRsp.authDataLen);
 
@@ -241,6 +255,7 @@ void smpActStorePin(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 bool_t smpProcPairing(smpCcb_t *pCcb, uint8_t *pOob, uint8_t *pDisplay)
 {
+    tr_info("%s", __FUNCTION__);
   bool_t          justWorks = TRUE;
   uint8_t         localAuth;
   wsfMsgHdr_t     hdr;
@@ -338,6 +353,7 @@ bool_t smpProcPairing(smpCcb_t *pCcb, uint8_t *pOob, uint8_t *pDisplay)
 /*************************************************************************************************/
 void smpAuthReq(smpCcb_t *pCcb, uint8_t oob, uint8_t display)
 {
+    tr_info("%s", __FUNCTION__);
   /* use a union to save a bit of memory on the stack */
   union
   {
@@ -380,6 +396,7 @@ void smpAuthReq(smpCcb_t *pCcb, uint8_t oob, uint8_t display)
 /*************************************************************************************************/
 void smpActPairCnfCalc1(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* store authentication data */
   smpActStorePin(pCcb, pMsg);
 
@@ -402,6 +419,7 @@ void smpActPairCnfCalc1(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActPairCnfCalc2(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   smpCalcC1Part2(pCcb, pCcb->pScr->buf.b1, pMsg->aes.pCiphertext);
 }
 
@@ -417,6 +435,7 @@ void smpActPairCnfCalc2(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActSendPairCnf(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   *pPkt;
   uint8_t   *p;
 
@@ -451,6 +470,7 @@ void smpActSendPairCnf(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActPairCnfVerCalc1(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   *p;
 
   /* go to start of received pairing random packet */
@@ -475,6 +495,7 @@ void smpActPairCnfVerCalc1(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActPairCnfVerCalc2(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   smpCalcC1Part2(pCcb, pCcb->pScr->buf.b1, pMsg->aes.pCiphertext);
 }
 
@@ -490,6 +511,7 @@ void smpActPairCnfVerCalc2(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 bool_t smpSendKey(smpCcb_t *pCcb, uint8_t keyDist)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t     *pPkt;
   uint8_t     *p;
   wsfMsgHdr_t *pHdr;
@@ -622,6 +644,7 @@ bool_t smpSendKey(smpCcb_t *pCcb, uint8_t keyDist)
 /*************************************************************************************************/
 bool_t smpProcRcvKey(smpCcb_t *pCcb, dmSecKeyIndEvt_t *pKeyInd, uint8_t *pBuf, uint8_t keyDist)
 {
+    tr_info("%s", __FUNCTION__);
   bool_t    keyIndReady = FALSE;
   bool_t    done = FALSE;
   uint8_t   cmdCode;
@@ -714,6 +737,7 @@ bool_t smpProcRcvKey(smpCcb_t *pCcb, dmSecKeyIndEvt_t *pKeyInd, uint8_t *pBuf, u
 /*************************************************************************************************/
 void smpActMaxAttempts(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   uint32_t timeout;
 
   /* send paring failed packet; note this stops the timer so call this first */
@@ -742,6 +766,7 @@ void smpActMaxAttempts(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActAttemptRcvd(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* set that attempt was received */
   pCcb->attempts = 1;
 }
@@ -758,6 +783,7 @@ void smpActAttemptRcvd(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActNotifyDmAttemptsFailure(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* notify DM of pairing failure */
   pMsg->hdr.status = SMP_ERR_ATTEMPTS;
   pMsg->hdr.event = DM_SEC_PAIR_FAIL_IND;
@@ -776,6 +802,7 @@ void smpActNotifyDmAttemptsFailure(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActNotifyDmRspToFailure(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* notify DM of pairing failure */
   pMsg->hdr.status = SMP_ERR_TIMEOUT;
   pMsg->hdr.event = DM_SEC_PAIR_FAIL_IND;
@@ -794,6 +821,7 @@ void smpActNotifyDmRspToFailure(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActCheckAttempts(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* check if attempt was received */
   if (pCcb->attempts)
   {
@@ -819,6 +847,7 @@ void smpActCheckAttempts(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpActPairingCmpl(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   dmSecPairCmplIndEvt_t pairCmpl;
 
   smpCleanup(pCcb);
@@ -844,6 +873,7 @@ void smpActPairingCmpl(smpCcb_t *pCcb, smpMsg_t *pMsg)
 /*************************************************************************************************/
 void smpSmExecute(smpCcb_t *pCcb, smpMsg_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   smpTblEntry_t const *pTblEntry;
   smpSmIf_t const *pSmIf;
 

@@ -37,6 +37,10 @@
 #include "smp_handler.h"
 #include "sec_api.h"
 
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "COSM"
+
 /**************************************************************************************************
   Global Variables
 **************************************************************************************************/
@@ -77,6 +81,7 @@ smpCb_t smpCb;
 /*************************************************************************************************/
 static void smpL2cDataCback(uint16_t handle, uint16_t len, uint8_t *pPacket)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t       cmdCode;
   smpCcb_t      *pCcb;
 
@@ -129,6 +134,7 @@ static void smpL2cDataCback(uint16_t handle, uint16_t len, uint8_t *pPacket)
 /*************************************************************************************************/
 static void smpL2cCtrlCback(wsfMsgHdr_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   smpCcb_t      *pCcb;
   uint8_t       *pPkt;
 
@@ -176,6 +182,7 @@ static void smpL2cCtrlCback(wsfMsgHdr_t *pMsg)
 /*************************************************************************************************/
 static void smpResumeAttemptsState(dmConnId_t connId)
 {
+    tr_info("%s", __FUNCTION__);
   smpCcb_t *pCcb = smpCcbByConnId(connId);
   uint32_t timeMs = SmpDbGetPairingDisabledTime(connId);
 
@@ -207,6 +214,7 @@ static void smpResumeAttemptsState(dmConnId_t connId)
 /*************************************************************************************************/
 static void smpDmConnCback(dmEvt_t *pDmEvt)
 {
+    tr_info("%s", __FUNCTION__);
   smpCcb_t      *pCcb;
   wsfMsgHdr_t   hdr;
 
@@ -318,6 +326,7 @@ smpCcb_t *smpCcbByConnId(dmConnId_t connId)
 /*************************************************************************************************/
 void smpCalcC1Part1(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pRand)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   buf[HCI_ENCRYPT_DATA_LEN];
   uint8_t   *p;
   uint8_t   i;
@@ -393,6 +402,7 @@ void smpCalcC1Part1(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pRand)
     wsfMsgHdr_t     hdr;
 
     /* fail on invalid token */
+    tr_info("failed in computation of smpCalcC1Part1");
     hdr.status = SMP_ERR_UNSPECIFIED;
     hdr.event = SMP_MSG_API_CANCEL_REQ;
 
@@ -413,6 +423,7 @@ void smpCalcC1Part1(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pRand)
 /*************************************************************************************************/
 void smpCalcC1Part2(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pPart1)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   buf[HCI_ENCRYPT_DATA_LEN];
   uint8_t   *p;
   uint8_t   i;
@@ -490,6 +501,7 @@ void smpCalcC1Part2(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pPart1)
     wsfMsgHdr_t     hdr;
 
     /* fail on invalid token */
+  tr_info("failed in computation of smpCalcC1Part2");
     hdr.status = SMP_ERR_UNSPECIFIED;
     hdr.event = SMP_MSG_API_CANCEL_REQ;
 
@@ -511,6 +523,7 @@ void smpCalcC1Part2(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pPart1)
 /*************************************************************************************************/
 void smpCalcS1(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pRand1, uint8_t *pRand2)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t   buf[HCI_ENCRYPT_DATA_LEN];
 
   /* note all numbers contained in byte arrays are little endian */
@@ -527,6 +540,7 @@ void smpCalcS1(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pRand1, uint8_t *pRand2)
     wsfMsgHdr_t     hdr;
 
     /* fail on invalid token */
+  tr_info("failed in computation of smpCalcS1");
     hdr.status = SMP_ERR_UNSPECIFIED;
     hdr.event = SMP_MSG_API_CANCEL_REQ;
 
@@ -545,6 +559,7 @@ void smpCalcS1(smpCcb_t *pCcb, uint8_t *pKey, uint8_t *pRand1, uint8_t *pRand2)
 /*************************************************************************************************/
 void smpGenerateLtk(smpCcb_t *pCcb)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t *p;
   smpScratch_t *pScr = pCcb->pScr;
 
@@ -581,6 +596,7 @@ void smpGenerateLtk(smpCcb_t *pCcb)
 /*************************************************************************************************/
 void smpSendPkt(smpCcb_t *pCcb, uint8_t *pPkt)
 {
+    tr_info("%s", __FUNCTION__);
   /* if flow disabled */
   if (pCcb->flowDisabled)
   {
@@ -654,6 +670,7 @@ void SmpDmMsgSend(smpDmMsg_t *pMsg)
 /*************************************************************************************************/
 void SmpDmEncryptInd(wsfMsgHdr_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   /* set event to SMP event type */
   pMsg->event = (pMsg->status == HCI_SUCCESS) ?
                  SMP_MSG_DM_ENCRYPT_CMPL : SMP_MSG_DM_ENCRYPT_FAILED;
@@ -675,6 +692,7 @@ void SmpDmEncryptInd(wsfMsgHdr_t *pMsg)
 /*************************************************************************************************/
 uint8_t smpGetScSecLevel(smpCcb_t *pCcb)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t secLevel;
 
   if (pCcb->auth & SMP_AUTH_MITM_FLAG)
@@ -729,6 +747,7 @@ bool_t SmpDmLescEnabled(dmConnId_t connId)
 /*************************************************************************************************/
 uint8_t *SmpDmGetStk(dmConnId_t connId, uint8_t *pSecLevel)
 {
+    tr_info("%s", __FUNCTION__);
   smpCcb_t     *pCcb;
 
   /* get connection control block */
@@ -772,6 +791,7 @@ uint8_t *SmpDmGetStk(dmConnId_t connId, uint8_t *pSecLevel)
 /*************************************************************************************************/
 uint8_t *SmpDmGetLtk(dmConnId_t connId)
 {
+    tr_info("%s", __FUNCTION__);
   smpCcb_t     *pCcb;
 
   /* get connection control block */
@@ -799,6 +819,7 @@ uint8_t *SmpDmGetLtk(dmConnId_t connId)
 /*************************************************************************************************/
 void SmpHandlerInit(wsfHandlerId_t handlerId)
 {
+    tr_info("%s", __FUNCTION__);
   uint8_t     i;
   smpCcb_t   *pCcb;
 
@@ -840,6 +861,7 @@ void SmpHandlerInit(wsfHandlerId_t handlerId)
 /*************************************************************************************************/
 void SmpHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
 {
+    tr_info("%s", __FUNCTION__);
   smpCcb_t     *pCcb;
 
   /* Handle message */

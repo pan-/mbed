@@ -38,6 +38,10 @@
 #include "smp_main.h"
 #include "smp_sc_main.h"
 
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "COSM"
+
 /**************************************************************************************************
   Macros
 **************************************************************************************************/
@@ -319,6 +323,7 @@ bool_t smpScProcPairing(smpCcb_t *pCcb, uint8_t *pOob, uint8_t *pDisplay)
     }
     else
     {
+        tr_info("failed in smpScProcPairing");
       hdr.status = SMP_ERR_UNSPECIFIED;
       hdr.event = SMP_MSG_API_CANCEL_REQ;
     }
@@ -517,6 +522,7 @@ void smpScActAuthSelect(smpCcb_t *pCcb, smpMsg_t *pMsg)
     hdr.event = SMP_MSG_INT_PASSKEY;
     break;
   default:
+      tr_info("failed in smpScActAuthSelect");
     hdr.status = SMP_ERR_UNSPECIFIED;
     hdr.event = SMP_MSG_API_CANCEL_REQ;
     break;
@@ -747,6 +753,7 @@ void smpScActPkSendKeypress(smpCcb_t *pCcb, smpMsg_t *pMsg)
     }
     else
     {
+        tr_info("failed in smpScActPkSendKeypress");
       pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
       pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
       smpSmExecute(pCcb, pMsg);

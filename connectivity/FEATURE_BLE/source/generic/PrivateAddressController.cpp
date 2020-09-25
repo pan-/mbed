@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
+//#define MBED_TRACE_MAX_LEVEL TRACE_LEVEL_WARN
+
 #include "PrivateAddressController.h"
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "PACO"
 
 namespace ble {
 
@@ -46,6 +51,7 @@ PrivateAddressController::~PrivateAddressController()
 
 void PrivateAddressController::set_local_irk(const irk_t &local_irk)
 {
+    tr_info("set local irk: %s", tr_array(local_irk.data(), local_irk.size()));
     _local_irk = local_irk;
     generate_resolvable_address();
 }
@@ -81,6 +87,8 @@ void PrivateAddressController::start_private_address_generation()
         return;
     }
 
+    tr_info("start private address generation");
+
     // non resolvable private address generation has been delayed until now,
     // generate it.
     generate_non_resolvable_address();
@@ -97,6 +105,7 @@ void PrivateAddressController::start_private_address_generation()
 void PrivateAddressController::stop_private_address_generation()
 {
     if (_generation_started) {
+        tr_info("stop private address generation");
         _address_rotation_ticker.detach();
         _generation_started = false;
     }
@@ -105,6 +114,7 @@ void PrivateAddressController::stop_private_address_generation()
 void PrivateAddressController::generate_resolvable_address()
 {
     if (_local_irk != irk_t{}) {
+        tr_info("start rpa generation");
         _pal.generate_resolvable_private_address(_local_irk);
     }
 }
@@ -112,6 +122,7 @@ void PrivateAddressController::generate_resolvable_address()
 void PrivateAddressController::on_resolvable_private_address_generated(const address_t &rpa)
 {
     _resolvable_address = rpa;
+    tr_info("rpa generated: %s", tr_mac(rpa));
     if (_event_handler) {
         _event_handler->on_resolvable_private_addresses_generated(_resolvable_address);
     }
@@ -120,6 +131,7 @@ void PrivateAddressController::on_resolvable_private_address_generated(const add
 void PrivateAddressController::generate_non_resolvable_address()
 {
     _non_resolvable_address = _pal.generate_non_resolvable_private_address();
+    tr_info("nrpa generated: %s", tr_mac(_non_resolvable_address));
     _event_queue.post([this] {
         if (_event_handler) {
             _event_handler->on_non_resolvable_private_addresses_generated(_non_resolvable_address);
@@ -135,6 +147,7 @@ bool PrivateAddressController::is_controller_privacy_supported()
 ble_error_t PrivateAddressController::enable_controller_address_resolution(bool enable)
 {
     MBED_ASSERT(is_controller_privacy_supported());
+    tr_info("set ll resolution: %d", enable);
     return _pal.set_ll_address_resolution(enable);
 }
 
@@ -156,6 +169,12 @@ ble_error_t PrivateAddressController::add_device_to_resolving_list(
     if (_local_irk == irk_t{}) {
         return BLE_ERROR_INVALID_STATE;
     }
+
+    tr_info("add device to resolving list: add=%s, type=%d, irk=%s",
+        tr_mac(peer_identity_address),
+        peer_address_type.value(),
+        tr_array(peer_irk.data(), peer_irk.size())
+    );
 
     if (is_controller_privacy_supported()) {
         return queue_add_device_to_resolving_list(
@@ -258,6 +277,7 @@ bool PrivateAddressController::resolve_address_in_cache(
     const address_t **retrieved_address
 )
 {
+    tr_info("cache check %s", tr_mac(peer_address));
     // An LRU cache is used, we first traverse the list of resolved address
     // and return any match
     auto *entry = _resolved_list;
@@ -278,12 +298,19 @@ bool PrivateAddressController::resolve_address_in_cache(
                 entry->next = _resolved_list;
                 _resolved_list = entry;
             }
+            if (*retrieved_address) {
+                tr_info("cache hit: %s, type: %d", tr_mac(entry->identity->peer_address), entry->identity->peer_address_type);
+            } else {
+                tr_info("cache hit as not resolved!");
+            }
+
             return true;
         }
         previous = entry;
         entry = entry->next;
     }
 
+    tr_info("address not found in cache");
     return false;
 }
 
@@ -305,6 +332,7 @@ ble_error_t PrivateAddressController::resolve_address(
     if (*resolution_complete) {
         return BLE_ERROR_NONE;
     } else {
+        tr_info("resolve address: %s", tr_mac(peer_address));
         return queue_resolve_address(peer_address);
     }
 }
@@ -469,6 +497,7 @@ struct PrivateAddressController::PrivacyResolveAddress final :
         PrivacyControlBlock(),
         peer_address(peer_address)
     {
+        tr_info("PrivateAddressController construction for %s", tr_mac(peer_address));
     }
 
     bool execute(PrivateAddressController& self) final
@@ -488,8 +517,10 @@ struct PrivateAddressController::PrivacyResolveAddress final :
         if (require_restart) {
             require_restart = false;
             resolving_list_index = 0;
+            tr_info("restart resolution from the beginning");
             return execute(self);
         } else if (resolved) {
+            tr_info("resolution complete: %d => %s", resolved, tr_mac(peer_address));
             notify_completion(
                 self, peer_address, resolved,
                 &self._resolving_list[resolving_list_index]
@@ -501,14 +532,17 @@ struct PrivateAddressController::PrivacyResolveAddress final :
     }
 
     void invalidate() {
+        tr_info("PrivateAddressController::invalidate");
         require_restart = true;
     }
 
 private:
     bool start_next_resolution_round(PrivateAddressController& self) {
+        tr_info("PrivateAddressController::start next resolution");
         do {
             ++resolving_list_index;
             if (resolving_list_index == RESOLVING_LIST_SIZE) {
+                tr_info("end of resolving list reached, failed to resolve address");
                 notify_completion(self, peer_address,false,nullptr);
                 return true;
             }
@@ -519,6 +553,8 @@ private:
     }
 
     void start_resolution(PrivateAddressController& self) {
+        const auto& irk = self._resolving_list[resolving_list_index].peer_irk;
+        tr_info("start new resolution: peer = %s, irk = %s", tr_mac(peer_address), tr_array(irk.data(), irk.size()));
         self._pal.resolve_private_address(
             peer_address,
             self._resolving_list[resolving_list_index].peer_irk
@@ -532,6 +568,7 @@ private:
         resolving_list_entry_t* identity
     )
     {
+        tr_info("notify resolution completion: %d", resolved);
         // First we had the device to the resolution list
         self.add_resolution_entry_to_cache(peer_resolvable_address, identity);
 
@@ -576,6 +613,7 @@ void PrivateAddressController::restart_resolution_process()
 
 void PrivateAddressController::on_private_address_resolved(bool success)
 {
+    tr_info("PrivateAddressController::on_private_address_resolved");
     MBED_ASSERT(is_controller_privacy_supported() == false);
     if (_pending_privacy_control_blocks == nullptr ||
         _processing_privacy_control_block == false

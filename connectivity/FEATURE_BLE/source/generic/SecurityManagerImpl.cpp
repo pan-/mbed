@@ -26,6 +26,10 @@
 #include "source/generic/FileSecurityDb.h"
 #include "source/generic/KVStoreSecurityDb.h"
 
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "PASM"
+
 using ble::advertising_peer_address_type_t;
 using ble::AuthenticationMask;
 using ble::KeyDistribution;
@@ -1032,6 +1036,7 @@ ble_error_t SecurityManager::init_signing()
 
 ble_error_t SecurityManager::init_identity()
 {
+    tr_info("init identity");
     if (!_db) return BLE_ERROR_INITIALIZATION_INCOMPLETE;
     const irk_t *pirk = nullptr;
 
@@ -1041,6 +1046,7 @@ ble_error_t SecurityManager::init_identity()
     address_t identity_address;
     bool public_identity_address = false;
     if (irk != irk_t()) {
+        tr_info("local irk found!: %s", tr_array(irk.data(), irk.size()));
         pirk = &irk;
         public_identity_address = _db->is_local_identity_address_public();
         identity_address = _db->get_local_identity_address();
@@ -1051,6 +1057,7 @@ ble_error_t SecurityManager::init_identity()
             // The code should replace the random static address with the identity
             // address if this is the case.
             if (_db->get_local_identity_address() != gap.getRandomStaticAddress()) {
+                tr_info("replace random static address with the one in the db");
                 ble_error_t err = gap.setRandomStaticAddress(_db->get_local_identity_address());
                 if (err) {
                     return err;
@@ -1062,6 +1069,8 @@ ble_error_t SecurityManager::init_identity()
         if (ret != BLE_ERROR_NONE) {
             return ret;
         }
+
+        tr_info("irk generated: %s", tr_array(irk.data(), irk.size()));
 
         pirk = &irk;
         public_identity_address = false;
@@ -1172,6 +1181,7 @@ void SecurityManager::set_ltk_cb(
     const SecurityEntryKeys_t* entryKeys
 )
 {
+    tr_info("set_ltk_cb: entrykey=%p", entryKeys);
     MBED_ASSERT(_db);
     ControlBlock_t *cb = get_control_block(db_entry);
     if (!cb) {
@@ -1184,6 +1194,7 @@ void SecurityManager::set_ltk_cb(
     }
 
     if (entryKeys) {
+        tr_info("set_ltk_cb: ltk=%s", tr_array(entryKeys->ltk.data(), entryKeys->ltk.size()));
         _pal.set_ltk(
             cb->connection,
             entryKeys->ltk,
@@ -1191,6 +1202,7 @@ void SecurityManager::set_ltk_cb(
             flags->secure_connections_paired
         );
     } else {
+        tr_info("set_ltk_cb: not found", entryKeys);
         _pal.set_ltk_not_found(cb->connection);
     }
 }
@@ -1922,17 +1934,21 @@ void SecurityManager::on_ltk_request(
     const rand_t &rand
 )
 {
+    tr_info("on_ltk_request: ediv=%s, rand=%s", tr_array(ediv.data(), ediv.size()), tr_array(rand.data(), rand.size()));
     MBED_ASSERT(_db);
     ControlBlock_t *cb = get_control_block(connection);
     if (!cb) {
+        tr_info("no control block for the connection");
         return;
     }
 
     SecurityDistributionFlags_t* flags = _db->get_distribution_flags(cb->db_entry);
     if (!flags) {
+        tr_info("no distribution flags");
         return;
     }
 
+    tr_info("retrieve keys from the db");
     _db->get_entry_local_keys(
         mbed::callback(this, &SecurityManager::set_ltk_cb),
         &cb->db_entry,
@@ -1967,9 +1983,11 @@ SecurityManager::ControlBlock_t::ControlBlock_t() :
 
 void SecurityManager::on_ltk_request(connection_handle_t connection)
 {
+    tr_info("on_ltk_request: %d", connection);
     MBED_ASSERT(_db);
     ControlBlock_t *cb = get_control_block(connection);
     if (!cb) {
+        tr_info("failure, no control block for this connection");
         return;
     }
 

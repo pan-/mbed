@@ -311,7 +311,7 @@ ble::PrivateAddressController &BLEInstanceBase::getPrivateAddressRegistry()
     static ble::PrivateAddressController registry(
         impl::PalPrivateAddressController::instance(),
         _event_queue,
-        ble::resolvable_address_timeout_t{}
+        ble::resolvable_address_timeout_t{ 30 }
     );
     return registry;
 }

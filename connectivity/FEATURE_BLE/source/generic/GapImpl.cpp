@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+//#define MBED_TRACE_MAX_LEVEL  TRACE_LEVEL_WARN
+
 #include <algorithm>
 #include <cstdint>
 
@@ -32,6 +34,9 @@
 #include "source/pal/PalEventQueue.h"
 #include "source/pal/PalSecurityManager.h"
 
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "GGAP"
 
 using namespace std::chrono;
 
@@ -403,6 +408,7 @@ ble_error_t Gap::setRandomStaticAddress(
     }
 
     if (!_privacy_enabled) {
+        tr_info("set random static address to %s", tr_mac(address));
         ble_error_t err = _pal_gap.set_random_address(address);
         if (err) {
             return err;
@@ -528,6 +534,7 @@ ble_error_t Gap::connect(
             if (!_active_sets.get(LEGACY_ADVERTISING_HANDLE) &&
                 !_pending_sets.get(LEGACY_ADVERTISING_HANDLE)
             ) {
+                tr_info("update initiating address to %s", tr_mac(*address));
                 _pal_gap.set_random_address(*address);
             }
         } else {
@@ -552,6 +559,7 @@ ble_error_t Gap::connect(
     } else {
         // set the correct mac address before starting scanning.
         if (!_scan_enabled) {
+            tr_info("update initiating address to %s", tr_mac(*address));
             _pal_gap.set_random_address(*address);
         } else {
             // ensure scan is stopped.
@@ -1859,6 +1867,7 @@ ble_error_t Gap::startAdvertising(
     if (is_extended_advertising_available()) {
         // Addresses can be updated if the set is not advertising
         if (!_active_sets.get(handle)) {
+            _pal_gap.set_random_address(*random_address);
             _pal_gap.set_advertising_set_random_address(handle, *random_address);
         }
 
@@ -1889,6 +1898,7 @@ ble_error_t Gap::startAdvertising(
 
         // Address can be updated if the device is not scanning or advertising
         if (!_scan_enabled && !_scan_pending && !_active_sets.get(LEGACY_ADVERTISING_HANDLE)) {
+            tr_info("update advertising address %s", tr_mac(*random_address));
             _pal_gap.set_random_address(*random_address);
         }
 
@@ -2229,7 +2239,7 @@ void Gap::signal_connection_complete(
                 address_resolved = true;
             }
         }
-#endif BLE_ROLE_CENTRAL
+#endif
 
 #if BLE_ROLE_PERIPHERAL
         if (event.getOwnRole() == connection_role_t::PERIPHERAL) {
@@ -2337,14 +2347,17 @@ void Gap::conclude_signal_connection_complete_after_address_resolution(
 #if BLE_ROLE_PERIPHERAL
 #if BLE_FEATURE_SECURITY
     if (resolvable_address_not_known) {
+        tr_info("resolvable_address_not_known!");
         ble::SecurityManager &sm = BLE::Instance().securityManager();
         if (_peripheral_privacy_configuration.resolution_strategy ==
             peripheral_privacy_configuration_t::PERFORM_PAIRING_PROCEDURE) {
 
             // Request authentication to start pairing procedure
+            tr_info("request authentication....");
             sm.requestAuthentication(event.getConnectionHandle());
         } else if (_peripheral_privacy_configuration.resolution_strategy ==
                    peripheral_privacy_configuration_t::PERFORM_AUTHENTICATION_PROCEDURE) {
+            tr_info("perform authentication....");
             sm.setLinkSecurity(
                 event.getConnectionHandle(),
                 ble::SecurityManager::SecurityMode_t::SECURITY_MODE_ENCRYPTION_WITH_MITM
@@ -2734,6 +2747,7 @@ ble_error_t Gap::startScan(
     if (is_extended_advertising_available()) {
         // set the correct mac address before starting scanning.
         if (!_scan_enabled) {
+            tr_info("update scan address to %s", tr_mac(*address));
             _pal_gap.set_random_address(*address);
         }
 
@@ -2757,6 +2771,7 @@ ble_error_t Gap::startScan(
         // update the address if no scan or advertising is running
         auto adv_handle = LEGACY_ADVERTISING_HANDLE;
         if (!_scan_enabled && !_active_sets.get(adv_handle) && !_pending_sets.get(adv_handle)) {
+            tr_info("update scan address to %s", tr_mac(*address));
             _pal_gap.set_random_address(*address);
         }
 
@@ -3075,7 +3090,7 @@ void Gap::on_address_resolution_completed(
 
         delete event;
     }
-#endif BLE_ROLE_OBSERVER
+#endif // BLE_ROLE_OBSERVER
 #endif // BLE_FEATURE_PRIVACY
 }
 

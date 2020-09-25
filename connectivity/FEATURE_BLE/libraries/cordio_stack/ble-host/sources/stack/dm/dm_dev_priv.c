@@ -32,6 +32,9 @@
 #include "dm_api.h"
 #include "dm_dev.h"
 #include "dm_main.h"
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "COMC"
 
 /**************************************************************************************************
   Data Types
@@ -184,6 +187,7 @@ static void dmDevPrivSetRpa(uint8_t *pAddr)
 {
   uint8_t i;
 
+    tr_info("dmDevPrivSetRpa: %s", tr_array(pAddr, 6));
   /* set new RPA as local address */
   BdaCpy(dmCb.localAddr, pAddr);
 

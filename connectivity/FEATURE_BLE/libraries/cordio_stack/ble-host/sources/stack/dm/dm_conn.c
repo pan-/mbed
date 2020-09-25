@@ -33,6 +33,10 @@
 #include "dm_dev.h"
 #include "dm_main.h"
 #include "dm_conn.h"
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "CODM"
+
 
 /**************************************************************************************************
   Macros
@@ -471,6 +475,8 @@ void dmConnSmActConnOpened(dmConnCcb_t *pCcb, dmConnMsg_t *pMsg)
   {
     BdaCpy(pCcb->localAddr, dmCb.localAddr);
   }
+
+  tr_info("dmConnSmActConnOpened local address: %s, type: %d", tr_array(pCcb->localAddr, 6), pCcb->localAddrType);
 
   /* store enhanced fields */
   BdaCpy(pCcb->localRpa, pMsg->hciLeConnCmpl.localRpa);

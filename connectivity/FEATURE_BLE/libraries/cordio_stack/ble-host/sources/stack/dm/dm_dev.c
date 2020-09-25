@@ -29,7 +29,9 @@
 #include "dm_api.h"
 #include "dm_dev.h"
 #include "dm_main.h"
+#include "mbed_trace.h"
 
+#define TRACE_GROUP                 "COMC"
 /**************************************************************************************************
   Global Variables
 **************************************************************************************************/
@@ -280,6 +282,7 @@ void DmDevReset(void)
 /*************************************************************************************************/
 void DmDevSetRandAddr(uint8_t *pAddr)
 {
+    tr_info("DmDevSetRandAddr: %s", tr_array(pAddr, 6));
   BdaCpy(dmCb.localAddr, pAddr);
   HciLeSetRandAddrCmd(pAddr);
 }

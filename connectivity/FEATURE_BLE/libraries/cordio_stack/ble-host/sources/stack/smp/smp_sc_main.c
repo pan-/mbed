@@ -39,6 +39,10 @@
 #include "smp_sc_main.h"
 #include "smp_handler.h"
 
+#include "mbed_trace.h"
+
+#define TRACE_GROUP                 "COSM"
+
 /**************************************************************************************************
   Global Variables
 **************************************************************************************************/
@@ -156,6 +160,7 @@ void SmpScCmac(const uint8_t *pKey, uint8_t *pText, uint8_t textLen, smpCcb_t *p
   if (SecCmac(pKey, pText, textLen, smpCb.handlerId, pCcb->connId, SMP_MSG_WSF_CMAC_CMPL) == FALSE)
   {
     WsfBufFree(pText);
+      tr_info("failure in SmpScCmac");
     pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
     pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
     smpSmExecute(pCcb, pMsg);
@@ -179,6 +184,7 @@ uint8_t *SmpScAlloc(uint8_t size, smpCcb_t *pCcb, smpMsg_t *pMsg)
 
   if (pBuf == NULL)
   {
+      tr_info("failure in SmpScAlloc");
     pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
     pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
     smpSmExecute(pCcb, pMsg);
@@ -331,6 +337,7 @@ void smpScSendPubKey(smpCcb_t *pCcb, smpMsg_t *pMsg)
   }
   else
   {
+      tr_info("failure in smpScSendPubKey");
     pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
     pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
     smpSmExecute(pCcb, pMsg);
@@ -374,6 +381,7 @@ void smpScSendDHKeyCheck(smpCcb_t *pCcb, smpMsg_t *pMsg, uint8_t *pCheck)
   }
   else
   {
+      tr_info("failure in smpScSendDHKeyCheck");
     pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
     pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
     smpSmExecute(pCcb, pMsg);
@@ -418,6 +426,7 @@ void smpScSendRand(smpCcb_t *pCcb, smpMsg_t *pMsg, uint8_t *pRand)
   }
   else
   {
+      tr_info("failure in smpScSendRand");
     pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
     pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
     smpSmExecute(pCcb, pMsg);
@@ -461,6 +470,7 @@ void smpScSendPairCnf(smpCcb_t *pCcb, smpMsg_t *pMsg, uint8_t *pCnf)
   }
   else
   {
+      tr_info("failure in smpScSendPairCnf");
     pMsg->hdr.status = SMP_ERR_UNSPECIFIED;
     pMsg->hdr.event = SMP_MSG_API_CANCEL_REQ;
     smpSmExecute(pCcb, pMsg);
