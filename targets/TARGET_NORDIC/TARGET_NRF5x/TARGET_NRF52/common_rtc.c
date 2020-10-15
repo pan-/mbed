@@ -99,21 +99,21 @@ void COMMON_RTC_IRQ_HANDLER(void)
 /* Function for fix errata 20: RTC Register values are invalid. */
 __STATIC_INLINE void errata_20(void)
 {
-#if defined(NRF52_PAN_20)
-    if (!NRF_HAL_SD_IS_ENABLED())
-    {
-        NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
-        NRF_CLOCK->TASKS_LFCLKSTART    = 1;
-
-        while (NRF_CLOCK->EVENTS_LFCLKSTARTED == 0)
-        {
-        }
-    }
-    NRF_RTC1->TASKS_STOP = 0;
-#endif
+//#if defined(NRF52_PAN_20)
+//    if (!NRF_HAL_SD_IS_ENABLED())
+//    {
+//        NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
+//        NRF_CLOCK->TASKS_LFCLKSTART    = 1;
+//
+//        while (NRF_CLOCK->EVENTS_LFCLKSTARTED == 0)
+//        {
+//        }
+//    }
+//    NRF_RTC1->TASKS_STOP = 0;
+//#endif
 }
 
-void RTC1_IRQHandler(void);
+void RTC0_IRQHandler(void);
 
 void common_rtc_init(void)
 {
@@ -129,7 +129,7 @@ void common_rtc_init(void)
 
     nrf_rtc_task_trigger(COMMON_RTC_INSTANCE, NRF_RTC_TASK_STOP);
 
-    NVIC_SetVector(RTC1_IRQn, (uint32_t)RTC1_IRQHandler);
+//    NVIC_SetVector(RTC0_IRQn, (uint32_t)RTC0_IRQHandler);
 
     /* RTC is driven by the low frequency (32.768 kHz) clock, a proper request
      * must be made to have it running.

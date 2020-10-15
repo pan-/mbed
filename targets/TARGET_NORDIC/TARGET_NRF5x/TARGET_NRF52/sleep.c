@@ -36,12 +36,19 @@
 
 extern bool us_ticker_initialized;
 
+
+#include "bb_api.h"
+#include "pal_timer.h"
+#include "pal_rtc.h"
+
 void hal_sleep(void)
 {
     // ensure debug is disconnected if semihost is enabled....
 
     // Trigger an event when an interrupt is pending. This allows to wake up
     // the processor from disabled interrupts.
+
+#if 0
     SCB->SCR |= SCB_SCR_SEVONPEND_Msk;
 
 #if defined(NRF52)  || defined(NRF52840_XXAA)
@@ -84,6 +91,38 @@ void hal_sleep(void)
             __WFE();
         }
     }
+#endif
+
+        /* Clock management for low power mode. */
+#if BB_CLK_RATE_HZ == 32768
+        uint32_t rtcNow = NRF_RTC1->COUNTER;
+
+        if ((BbGetCurrentBod() == NULL))
+        {
+            if ((PalTimerGetState() == PAL_TIMER_STATE_BUSY &&
+                ((NRF_RTC1->CC[3] - rtcNow) & PAL_MAX_RTC_COUNTER_VAL) > PAL_HFCLK_OSC_SETTLE_TICKS) ||
+                (PalTimerGetState() == PAL_TIMER_STATE_READY))
+            {
+                /* disable HFCLK */
+                NRF_CLOCK->TASKS_HFCLKSTOP = 1;
+                NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
+                (void)NRF_CLOCK->EVENTS_HFCLKSTARTED;
+            }
+        }
+#endif
+
+    NRF_POWER->TASKS_LOWPWR = 1;
+
+        /* CPU sleep. */
+#ifdef __IAR_SYSTEMS_ICC__
+        __wait_for_interrupt();
+#endif
+#ifdef __GNUC__
+        __asm volatile ("wfi");
+#endif
+#ifdef __CC_ARM
+        __wfi();
+#endif
 }
 
 void hal_deepsleep(void)
